@@ -37,6 +37,19 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ['dist/', 'preview-output/', 'zenstack/'],
+    files: ['package.json'],
+    rules: {
+      // types must precede default in exports conditions for TypeScript resolution
+      'jsonc/sort-keys': 'off',
+    },
+  },
+  {
+    ignores: [
+      'dist/',
+      'preview-output/',
+      'zenstack/',
+      'release-please-config.json',
+      '.release-please-manifest.json',
+    ],
   },
 );

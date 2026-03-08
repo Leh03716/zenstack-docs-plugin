@@ -53,6 +53,7 @@ export async function generate(context: CliGeneratorContext): Promise<void> {
 
   let filesGenerated = 0;
   const diagFmt = pluginOptions.diagramFormat ?? 'mermaid';
+  const diagEmbed = pluginOptions.diagramEmbed ?? 'file';
   const diagTheme = pluginOptions.erdTheme;
 
   const modelsDir = path.join(outputDir, 'models');
@@ -88,7 +89,13 @@ export async function generate(context: CliGeneratorContext): Promise<void> {
         options,
         procedures,
       });
-      await writePageWithDiagrams(mdPath, content, diagFmt, diagTheme);
+      await writePageWithDiagrams(
+        mdPath,
+        content,
+        diagFmt,
+        diagEmbed,
+        diagTheme,
+      );
       filesGenerated++;
     }
   }
@@ -108,7 +115,13 @@ export async function generate(context: CliGeneratorContext): Promise<void> {
         options,
         view,
       });
-      await writePageWithDiagrams(mdPath, content, diagFmt, diagTheme);
+      await writePageWithDiagrams(
+        mdPath,
+        content,
+        diagFmt,
+        diagEmbed,
+        diagTheme,
+      );
       filesGenerated++;
     }
   }
@@ -119,7 +132,7 @@ export async function generate(context: CliGeneratorContext): Promise<void> {
       genCtx,
       relations: allRelations,
     });
-    await writePageWithDiagrams(mdPath, content, diagFmt, diagTheme);
+    await writePageWithDiagrams(mdPath, content, diagFmt, diagEmbed, diagTheme);
     filesGenerated++;
   }
 
@@ -142,7 +155,13 @@ export async function generate(context: CliGeneratorContext): Promise<void> {
         options,
         typeDef,
       });
-      await writePageWithDiagrams(mdPath, content, diagFmt, diagTheme);
+      await writePageWithDiagrams(
+        mdPath,
+        content,
+        diagFmt,
+        diagEmbed,
+        diagTheme,
+      );
       filesGenerated++;
     }
   }
@@ -164,7 +183,13 @@ export async function generate(context: CliGeneratorContext): Promise<void> {
         navigation: enumNav.get(enumDecl.name),
         options,
       });
-      await writePageWithDiagrams(mdPath, content, diagFmt, diagTheme);
+      await writePageWithDiagrams(
+        mdPath,
+        content,
+        diagFmt,
+        diagEmbed,
+        diagTheme,
+      );
       filesGenerated++;
     }
   }
@@ -186,24 +211,35 @@ export async function generate(context: CliGeneratorContext): Promise<void> {
         options,
         proc,
       });
-      await writePageWithDiagrams(mdPath, content, diagFmt, diagTheme);
+      await writePageWithDiagrams(
+        mdPath,
+        content,
+        diagFmt,
+        diagEmbed,
+        diagTheme,
+      );
       filesGenerated++;
     }
   }
 
   if (pluginOptions.generateSkill) {
-    writeFile(
-      path.join(outputDir, 'SKILL.md'),
-      renderSkillPage({
-        enums,
-        hasRelationships,
-        models,
-        procedures,
-        schema: context.model,
-        title: pluginOptions.title ?? 'Schema Documentation',
-        typeDefs,
-        views,
-      }),
+    const skillMdPath = path.join(outputDir, 'SKILL.md');
+    const skillContent = renderSkillPage({
+      enums,
+      hasRelationships,
+      models,
+      procedures,
+      relations: allRelations,
+      title: pluginOptions.title ?? 'Schema Documentation',
+      typeDefs,
+      views,
+    });
+    await writePageWithDiagrams(
+      skillMdPath,
+      skillContent,
+      diagFmt,
+      diagEmbed,
+      diagTheme,
     );
     filesGenerated++;
   }
@@ -266,6 +302,11 @@ function resolveOutputDir(options: PluginOptions, defaultPath: string): string {
  */
 function resolvePluginOptions(raw: Record<string, unknown>): PluginOptions {
   return {
+    diagramEmbed: (['file', 'inline'] as const).includes(
+      raw['diagramEmbed'] as 'file' | 'inline',
+    )
+      ? (raw['diagramEmbed'] as 'file' | 'inline')
+      : 'file',
     diagramFormat: (['mermaid', 'svg', 'both'] as const).includes(
       raw['diagramFormat'] as 'both' | 'mermaid' | 'svg',
     )
@@ -311,11 +352,18 @@ async function writePageWithDiagrams(
   filePath: string,
   content: string,
   diagramFormat: 'both' | 'mermaid' | 'svg',
+  embed: 'file' | 'inline',
   theme?: string,
 ): Promise<number> {
   const baseName = path.basename(filePath, '.md');
   const dir = path.dirname(filePath);
-  const result = await processDiagrams(content, baseName, diagramFormat, theme);
+  const result = await processDiagrams(
+    content,
+    baseName,
+    diagramFormat,
+    embed,
+    theme,
+  );
   writeFile(filePath, result.markdown);
   for (const svg of result.svgFiles) {
     writeFile(path.join(dir, svg.filename), svg.content);

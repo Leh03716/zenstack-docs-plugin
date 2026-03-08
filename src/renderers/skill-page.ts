@@ -5,7 +5,12 @@ import {
   resolveTypeName,
   stripCommentPrefix,
 } from '../extractors';
-import { type SkillPageProps } from '../types';
+import {
+  type Relationship,
+  type RelationType,
+  type SkillPageProps,
+} from '../types';
+import { relationDedupKey, relationToMermaid } from './erd';
 import {
   type DataField,
   type DataModel,
@@ -14,6 +19,7 @@ import {
   type Procedure,
   type TypeDef,
 } from '@zenstackhq/language/ast';
+import { getAllFields } from '@zenstackhq/language/utils';
 
 type SkillCounts = {
   enums: number;
@@ -36,6 +42,7 @@ export function renderSkillPage(props: SkillPageProps): string {
     hasRelationships,
     models,
     procedures,
+    relations,
     title,
     typeDefs,
     views,
@@ -51,9 +58,12 @@ export function renderSkillPage(props: SkillPageProps): string {
   return [
     ...renderFrontmatter(title),
     ...renderOverview(title, counts, models, views),
+    ...renderRelationshipMap(relations),
+    ...renderRelationshipsTable(relations),
     ...renderConventions(models, typeDefs),
+    ...renderPolicyMatrix(models),
     ...renderConstraints(models),
-    ...renderWorkflow(procedures, hasRelationships),
+    ...renderWorkflow(models, procedures, relations, hasRelationships),
     ...renderEntityReference(models, enums, typeDefs, views),
     ...renderFooter(hasRelationships),
   ].join('\n');
@@ -65,7 +75,7 @@ export function renderSkillPage(props: SkillPageProps): string {
 function detectComputedFields(models: DataModel[]): string[] {
   const computed: string[] = [];
   for (const m of models) {
-    for (const f of m.fields) {
+    for (const f of getAllFields(m, true)) {
       if (f.attributes.some((a) => getAttributeName(a) === '@computed')) {
         const desc = f.comments ? stripCommentPrefix(f.comments) : '';
         const descPart = desc ? ` — ${desc}` : '';
@@ -83,7 +93,7 @@ function detectComputedFields(models: DataModel[]): string[] {
 function detectFKExamples(models: DataModel[]): string[] {
   const fks: string[] = [];
   for (const m of models) {
-    for (const f of m.fields) {
+    for (const f of getAllFields(m, true)) {
       if (!(f.type.reference?.ref && isDataModel(f.type.reference.ref))) {
         continue;
       }
@@ -238,8 +248,6 @@ function formatCountSummary(counts: SkillCounts): string {
   return parts.join(', ');
 }
 
-// --- Analysis helpers ---
-
 /**
  * Returns true if any model's access policy references `auth()`.
  */
@@ -259,34 +267,6 @@ function hasAuthRules(models: DataModel[]): boolean {
 }
 
 /**
- * Summarizes a model's relation fields as human-readable "field → Target (cardinality)" lines.
- */
-function modelRelationLines(model: DataModel): string[] {
-  const rels = model.fields.filter(
-    (f) => f.type.reference?.ref && isDataModel(f.type.reference.ref),
-  );
-  if (rels.length === 0) {
-    return [];
-  }
-
-  return rels
-    .map((f) => {
-      const ref = f.type.reference?.ref;
-      if (!ref) {
-        return '';
-      }
-
-      const card = f.type.array
-        ? 'has many'
-        : f.type.optional
-          ? 'optional'
-          : 'required';
-      return `- ${f.name} → ${ref.name} (${card})`;
-    })
-    .filter(Boolean);
-}
-
-/**
  * Returns a pluralized count string (e.g. "3 models", "1 view").
  */
 function plural(n: number, word: string): string {
@@ -294,23 +274,16 @@ function plural(n: number, word: string): string {
 }
 
 /**
- * Renders access policies and validation rules that agents must respect.
+ * Renders validation rules that agents must respect.
  */
 function renderConstraints(models: DataModel[]): string[] {
-  const modelsWithPolicies = models.filter((m) =>
-    m.attributes.some((a) => {
-      const name = a.decl.ref?.name;
-      return name === '@@allow' || name === '@@deny';
-    }),
-  );
-
   const validationEntries: Array<{
     field: string;
     model: string;
     rule: string;
   }> = [];
   for (const model of models) {
-    for (const field of model.fields) {
+    for (const field of getAllFields(model, true)) {
       for (const attribute of field.attributes) {
         const attributeDecl = attribute.decl.ref;
         if (!attributeDecl) {
@@ -332,77 +305,34 @@ function renderConstraints(models: DataModel[]): string[] {
     }
   }
 
-  if (modelsWithPolicies.length === 0 && validationEntries.length === 0) {
+  if (validationEntries.length === 0) {
     return [];
   }
 
   const lines: string[] = [];
-  lines.push('## Constraints You Must Respect');
+  lines.push('## Validation');
+  lines.push('');
+  lines.push(
+    'These constraints are enforced at the schema level. When generating test data, seed scripts, or form inputs, produce values that satisfy them.',
+  );
   lines.push('');
 
-  if (modelsWithPolicies.length > 0) {
-    lines.push('### Access Policies');
-    lines.push('');
-    lines.push(
-      'ZenStack enforces these rules at the ORM level. Your code does not need to re-implement them, but you must be aware of them when reasoning about what operations will succeed or fail.',
-    );
-    if (hasAuthRules(models)) {
-      lines.push('');
-      lines.push(
-        '> Some rules reference `auth()` — the currently authenticated user. Operations that require `auth()` will fail for unauthenticated requests.',
-      );
-    }
-
-    lines.push('');
-
-    for (const model of modelsWithPolicies.sort((a, b) =>
-      a.name.localeCompare(b.name),
-    )) {
-      const rules: string[] = [];
-      for (const attribute of model.attributes) {
-        const name = attribute.decl.ref?.name;
-        if (name !== '@@allow' && name !== '@@deny') {
-          continue;
-        }
-
-        const effect = name === '@@allow' ? 'allow' : 'deny';
-        const args = attribute.args
-          .map((a) => a.$cstNode?.text ?? '')
-          .join(', ');
-        rules.push(`${effect}(${args})`);
-      }
-
-      lines.push(`**${model.name}**: ${rules.join(' · ')}`);
-      lines.push('');
-    }
+  const byModel = new Map<string, Array<{ field: string; rule: string }>>();
+  for (const entry of validationEntries) {
+    const list = byModel.get(entry.model) ?? [];
+    list.push({ field: entry.field, rule: entry.rule });
+    byModel.set(entry.model, list);
   }
 
-  if (validationEntries.length > 0) {
-    lines.push('### Validation');
-    lines.push('');
-    lines.push(
-      'These constraints are enforced at the schema level. When generating test data, seed scripts, or form inputs, produce values that satisfy them.',
-    );
-    lines.push('');
-
-    const byModel = new Map<string, Array<{ field: string; rule: string }>>();
-    for (const entry of validationEntries) {
-      const list = byModel.get(entry.model) ?? [];
-      list.push({ field: entry.field, rule: entry.rule });
-      byModel.set(entry.model, list);
-    }
-
-    for (const modelName of [...byModel.keys()].sort()) {
-      const rules = byModel
-        .get(modelName)!
-        .map((r) => `${r.field}: ${r.rule}`)
-        .join(', ');
-      lines.push(`- **${modelName}**: ${rules}`);
-    }
-
-    lines.push('');
+  for (const modelName of [...byModel.keys()].sort()) {
+    const rules = byModel
+      .get(modelName)!
+      .map((r) => `${r.field}: ${r.rule}`)
+      .join(', ');
+    lines.push(`- **${modelName}**: ${rules}`);
   }
 
+  lines.push('');
   return lines;
 }
 
@@ -456,8 +386,6 @@ function renderConventions(models: DataModel[], typeDefs: TypeDef[]): string[] {
   return lines;
 }
 
-// --- Instructional sections ---
-
 /**
  * Renders the full entity reference with Prisma declaration blocks and doc page links.
  */
@@ -485,16 +413,7 @@ function renderEntityReference(
       lines.push(...renderModelDeclaration(model, 'model'));
       lines.push('```');
       lines.push('');
-
-      const rels = modelRelationLines(model);
-      if (rels.length > 0) {
-        lines.push('Relationships:');
-        for (const r of rels) {
-          lines.push(r);
-        }
-
-        lines.push('');
-      }
+      lines.push(...renderFieldSummary(model));
 
       lines.push(`[${model.name} (Model)](./models/${model.name}.md)`);
       lines.push('');
@@ -580,6 +499,81 @@ function renderEnumDeclaration(e: Enum): string[] {
 }
 
 /**
+ * Renders a compact field summary listing required, optional, auto-generated, and unique fields.
+ */
+function renderFieldSummary(model: DataModel): string[] {
+  const allFields = getAllFields(model, true);
+  const required: string[] = [];
+  const optional: string[] = [];
+  const autoGenerated: string[] = [];
+  const unique: string[] = [];
+
+  for (const field of allFields) {
+    if (field.type.reference?.ref && isDataModel(field.type.reference.ref)) {
+      continue;
+    }
+
+    const typeName = resolveTypeName(field.type);
+    const hasDefault = field.attributes.some(
+      (a) => getAttributeName(a) === '@default',
+    );
+    const hasUpdatedAt = field.attributes.some(
+      (a) => getAttributeName(a) === '@updatedAt',
+    );
+    const hasComputed = field.attributes.some(
+      (a) => getAttributeName(a) === '@computed',
+    );
+    const hasId = field.attributes.some((a) => getAttributeName(a) === '@id');
+    const hasUnique = field.attributes.some(
+      (a) => getAttributeName(a) === '@unique',
+    );
+
+    if (hasDefault || hasUpdatedAt || hasComputed) {
+      const defaultAttribute = field.attributes.find(
+        (a) => getAttributeName(a) === '@default',
+      );
+      const annotation = hasComputed
+        ? '@computed'
+        : hasUpdatedAt
+          ? '@updatedAt'
+          : `@default(${defaultAttribute?.args[0]?.$cstNode?.text ?? ''})`;
+      autoGenerated.push(`\`${field.name}\` (${annotation})`);
+    } else if (field.type.optional) {
+      optional.push(`\`${field.name}\` (${typeName}?)`);
+    } else if (!hasId) {
+      required.push(`\`${field.name}\` (${typeName})`);
+    }
+
+    if (hasUnique) {
+      unique.push(`\`${field.name}\``);
+    }
+  }
+
+  const lines: string[] = [];
+  if (required.length > 0) {
+    lines.push(`Required fields: ${required.join(', ')}`);
+  }
+
+  if (optional.length > 0) {
+    lines.push(`Optional fields: ${optional.join(', ')}`);
+  }
+
+  if (autoGenerated.length > 0) {
+    lines.push(`Auto-generated: ${autoGenerated.join(', ')}`);
+  }
+
+  if (unique.length > 0) {
+    lines.push(`Unique constraints: ${unique.join(', ')}`);
+  }
+
+  if (lines.length > 0) {
+    lines.push('');
+  }
+
+  return lines;
+}
+
+/**
  * Renders the footer with links to the full index and relationships pages.
  */
 function renderFooter(hasRelationships: boolean): string[] {
@@ -619,6 +613,32 @@ function renderFrontmatter(title: string): string[] {
 }
 
 /**
+ * Generates Prisma-style include patterns from One→Many and Many→Many relationships.
+ */
+function renderIncludePatterns(relations: Relationship[]): string[] {
+  const patterns: string[] = [];
+  const seen = new Set<string>();
+
+  for (const rel of relations) {
+    if (rel.type !== 'One\u2192Many' && rel.type !== 'Many\u2192Many') {
+      continue;
+    }
+
+    const key = `${rel.from}.${rel.field}`;
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    patterns.push(
+      `- \`${rel.from}\` with \`${rel.to}\`: \`include: { ${rel.field}: true }\``,
+    );
+  }
+
+  return patterns.slice(0, 8);
+}
+
+/**
  * Renders a complete model/view declaration block with comments, fields, and attributes.
  */
 function renderModelDeclaration(
@@ -642,10 +662,12 @@ function renderModelDeclaration(
       : '';
 
   lines.push(`${keyword} ${model.name}${mixinPart} {`);
-  for (const field of model.fields) {
+  for (const field of getAllFields(model, true)) {
     const fieldDesc = stripCommentPrefix(field.comments);
     if (fieldDesc) {
-      lines.push(`    /// ${fieldDesc}`);
+      for (const commentLine of fieldDesc.split('\n')) {
+        lines.push(`    /// ${commentLine}`);
+      }
     }
 
     lines.push(fieldDeclarationLine(field));
@@ -664,8 +686,6 @@ function renderModelDeclaration(
   lines.push('}');
   return lines;
 }
-
-// --- Entity Reference ---
 
 /**
  * Renders the schema overview section with entity counts and a categorized entity list.
@@ -707,6 +727,185 @@ function renderOverview(
 }
 
 /**
+ * Renders an access policy matrix table (Model x Operation).
+ */
+function renderPolicyMatrix(models: DataModel[]): string[] {
+  const modelsWithPolicies = models.filter((m) =>
+    m.attributes.some((a) => {
+      const name = a.decl.ref?.name;
+      return name === '@@allow' || name === '@@deny';
+    }),
+  );
+
+  if (modelsWithPolicies.length === 0) {
+    return [];
+  }
+
+  const operations = ['create', 'read', 'update', 'delete', 'all'];
+
+  const lines: string[] = [
+    '## Access Policies',
+    '',
+    'ZenStack enforces these rules at the ORM level. Your code does not need to re-implement them, but you must be aware of them when reasoning about what operations will succeed or fail.',
+    '',
+  ];
+
+  if (hasAuthRules(models)) {
+    lines.push(
+      '> Some rules reference `auth()` — the currently authenticated user. Operations that require `auth()` will fail for unauthenticated requests.',
+    );
+    lines.push('');
+  }
+
+  lines.push(
+    '| Model | Operation | Rule | Effect |',
+    '| ----- | --------- | ---- | ------ |',
+  );
+
+  for (const model of modelsWithPolicies.sort((a, b) =>
+    a.name.localeCompare(b.name),
+  )) {
+    for (const attribute of model.attributes) {
+      const name = attribute.decl.ref?.name;
+      if (name !== '@@allow' && name !== '@@deny') {
+        continue;
+      }
+
+      const effect = name === '@@allow' ? 'allow' : 'deny';
+      const argTexts = attribute.args.map((a) => a.$cstNode?.text ?? '');
+      const operation = argTexts[0]?.replaceAll(/['"]/gu, '') ?? 'all';
+      const condition = argTexts[1] ?? 'true';
+
+      const matchedOps =
+        operation === 'all'
+          ? operations.filter((o) => o !== 'all')
+          : [operation];
+
+      for (const op of matchedOps) {
+        lines.push(`| ${model.name} | ${op} | ${condition} | ${effect} |`);
+      }
+    }
+  }
+
+  lines.push('');
+  return lines;
+}
+
+/**
+ * Renders a compact Mermaid ERD showing only entity names and relationship connectors.
+ */
+function renderRelationshipMap(relations: Relationship[]): string[] {
+  if (relations.length === 0) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const connectorLines: string[] = [];
+  for (const rel of relations) {
+    const key = relationDedupKey(rel);
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    connectorLines.push(relationToMermaid(rel));
+  }
+
+  if (connectorLines.length === 0) {
+    return [];
+  }
+
+  return [
+    '## Relationship Map',
+    '',
+    '```mermaid',
+    'erDiagram',
+    ...connectorLines,
+    '```',
+    '',
+  ];
+}
+
+/**
+ * Renders a consolidated relationships quick-reference table.
+ */
+function renderRelationshipsTable(relations: Relationship[]): string[] {
+  if (relations.length === 0) {
+    return [];
+  }
+
+  const lines: string[] = [
+    '## Relationships',
+    '',
+    '| From | Field | To | Cardinality |',
+    '| ---- | ----- | -- | ----------- |',
+  ];
+
+  const labelMap: Record<RelationType, string> = {
+    'Many\u2192Many': 'Many-to-Many',
+    'Many\u2192One': 'Many-to-One',
+    'Many\u2192One?': 'Many-to-One (optional)',
+    'One\u2192Many': 'One-to-Many',
+    'One\u2192One': 'One-to-One',
+    'One\u2192One?': 'One-to-One (optional)',
+  };
+
+  for (const rel of relations) {
+    lines.push(
+      `| ${rel.from} | ${rel.field} | ${rel.to} | ${labelMap[rel.type]} |`,
+    );
+  }
+
+  lines.push('');
+  return lines;
+}
+
+/**
+ * Lists the minimum required fields (non-optional, no-default, non-relation) per model.
+ */
+function renderRequiredFieldsPerModel(models: DataModel[]): string[] {
+  const lines: string[] = [];
+  for (const model of [...models].sort((a, b) =>
+    a.name.localeCompare(b.name),
+  )) {
+    const allFields = getAllFields(model, true);
+    const required = allFields.filter((f) => {
+      if (f.type.optional || f.type.array) {
+        return false;
+      }
+
+      if (f.type.reference?.ref && isDataModel(f.type.reference.ref)) {
+        return false;
+      }
+
+      if (
+        f.attributes.some((a) => {
+          const name = getAttributeName(a);
+          return (
+            name === '@default' || name === '@updatedAt' || name === '@computed'
+          );
+        })
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+
+    if (required.length === 0) {
+      continue;
+    }
+
+    const fieldList = required
+      .map((f) => `\`${f.name}\` (${resolveTypeName(f.type)})`)
+      .join(', ');
+    lines.push(`- **${model.name}**: ${fieldList}`);
+  }
+
+  return lines;
+}
+
+/**
  * Renders a type definition declaration block with fields and doc comments.
  */
 function renderTypeDeclaration(td: TypeDef): string[] {
@@ -736,7 +935,9 @@ function renderTypeDeclaration(td: TypeDef): string[] {
  * Renders step-by-step guidance for writing queries, calling procedures, and generating test data.
  */
 function renderWorkflow(
+  models: DataModel[],
   procedures: Procedure[],
+  relations: Relationship[],
   hasRelationships: boolean,
 ): string[] {
   const lines: string[] = [];
@@ -755,6 +956,30 @@ function renderWorkflow(
   );
   lines.push('5. For full field details, follow the entity documentation link');
   lines.push('');
+
+  const includePatterns = renderIncludePatterns(relations);
+  if (includePatterns.length > 0) {
+    lines.push('**Common include patterns:**');
+    lines.push('');
+    for (const pattern of includePatterns) {
+      lines.push(pattern);
+    }
+
+    lines.push('');
+  }
+
+  const requiredFieldsSection = renderRequiredFieldsPerModel(models);
+  if (requiredFieldsSection.length > 0) {
+    lines.push('### Creating records');
+    lines.push('');
+    lines.push('Minimum required fields per model:');
+    lines.push('');
+    for (const line of requiredFieldsSection) {
+      lines.push(line);
+    }
+
+    lines.push('');
+  }
 
   if (procedures.length > 0) {
     lines.push('### Calling procedures');
@@ -814,6 +1039,14 @@ function renderWorkflow(
   lines.push('- Fields with `@computed` cannot be set — they are derived');
   lines.push('');
 
+  const creationOrder = topologicalSort(models);
+  if (creationOrder.length > 1) {
+    lines.push(
+      `**Creation order** (respects FK dependencies): ${creationOrder.map((n) => `\`${n}\``).join(' → ')}`,
+    );
+    lines.push('');
+  }
+
   if (hasRelationships) {
     lines.push('### Understanding relationships');
     lines.push('');
@@ -824,4 +1057,60 @@ function renderWorkflow(
   }
 
   return lines;
+}
+
+/**
+ * Topologically sorts models by FK dependencies so dependent models come after their parents.
+ */
+function topologicalSort(models: DataModel[]): string[] {
+  const modelNames = new Set(models.map((m) => m.name));
+  const deps = new Map<string, Set<string>>();
+  for (const m of models) {
+    deps.set(m.name, new Set());
+  }
+
+  for (const model of models) {
+    for (const field of getAllFields(model, true)) {
+      if (
+        field.type.reference?.ref &&
+        isDataModel(field.type.reference.ref) &&
+        !field.type.array &&
+        !field.type.optional
+      ) {
+        const target = field.type.reference.ref.name;
+        if (modelNames.has(target) && target !== model.name) {
+          deps.get(model.name)!.add(target);
+        }
+      }
+    }
+  }
+
+  const sorted: string[] = [];
+  const visited = new Set<string>();
+  const visiting = new Set<string>();
+
+  function visit(name: string): void {
+    if (visited.has(name)) {
+      return;
+    }
+
+    if (visiting.has(name)) {
+      return;
+    }
+
+    visiting.add(name);
+    for (const dep of deps.get(name) ?? []) {
+      visit(dep);
+    }
+
+    visiting.delete(name);
+    visited.add(name);
+    sorted.push(name);
+  }
+
+  for (const name of [...modelNames].sort()) {
+    visit(name);
+  }
+
+  return sorted;
 }

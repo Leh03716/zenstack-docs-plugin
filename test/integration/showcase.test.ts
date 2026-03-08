@@ -547,11 +547,13 @@ describe('integration: showcase schema', () => {
     expect(skill).toContain('Timestamps');
     expect(skill).toContain('**Computed fields**');
 
-    // Constraints
-    expect(skill).toContain('## Constraints You Must Respect');
-    expect(skill).toContain('### Access Policies');
-    expect(skill).toContain("allow('read', true)");
-    expect(skill).toContain('### Validation');
+    // Access Policies (matrix table)
+    expect(skill).toContain('## Access Policies');
+    expect(skill).toContain('| Model | Operation | Rule | Effect |');
+    expect(skill).toContain('| allow |');
+
+    // Validation
+    expect(skill).toContain('## Validation');
     expect(skill).toContain('@email');
     expect(skill).toContain('@length');
 
@@ -585,8 +587,9 @@ describe('integration: showcase schema', () => {
     expect(skill).toContain('#### UserProfile');
     expect(skill).toContain('view UserProfile {');
 
-    // Relationships inline under models
-    expect(skill).toContain('Relationships:');
+    // Relationships table (consolidated, not per-model)
+    expect(skill).toContain('## Relationships');
+    expect(skill).toContain('| From | Field | To | Cardinality |');
 
     // Links use entity name and type, not "Full documentation"
     expect(skill).toContain('[User (Model)](./models/User.md)');

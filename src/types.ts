@@ -69,6 +69,12 @@ export type NavLink = {
  * User-facing plugin options from the ZModel plugin block.
  */
 export type PluginOptions = {
+  /**
+   * Whether SVG diagrams are written as companion files (`'file'`) or embedded
+   * inline in the markdown (`'inline'`). Only applies when `diagramFormat` is
+   * `'svg'` or `'both'`.
+   */
+  diagramEmbed?: 'file' | 'inline';
   diagramFormat?: 'both' | 'mermaid' | 'svg';
   erdFormat?: 'both' | 'mmd' | 'svg';
   erdTheme?: string;
@@ -146,7 +152,7 @@ export type SkillPageProps = {
   hasRelationships: boolean;
   models: DataModel[];
   procedures: Procedure[];
-  schema: Model;
+  relations: Relationship[];
   title: string;
   typeDefs: TypeDef[];
   views: DataModel[];

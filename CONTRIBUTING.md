@@ -310,23 +310,15 @@ pnpm test -- --update
 
 ### Prerequisites
 
-From the repository root:
-
 ```bash
 pnpm install
 pnpm build
 ```
 
-The plugin package is at `packages/plugins/documentation/`.
-
 ### Build
 
 ```bash
-# Build this package only (run from packages/plugins/documentation/)
 pnpm build
-
-# Build from repo root (builds all packages via Turbo)
-cd /path/to/zenstack && pnpm build
 ```
 
 The build uses `tsup-node` for bundling and `tsc --noEmit` for type checking.
@@ -346,22 +338,80 @@ This plugin was built with strict TDD. When adding features:
 pnpm lint
 ```
 
-Uses the shared `@zenstackhq/eslint-config`.
+Uses `eslint-config-canonical` with project-specific overrides defined in `eslint.config.js`.
 
 ### Preview output
 
-To visually inspect what the plugin generates, point the output at a local directory:
+To visually inspect what the plugin generates:
 
 ```bash
-# In any project with a schema.zmodel:
-plugin documentation {
-    provider = '../path/to/packages/plugins/documentation'
-    output   = './preview-output'
-}
-pnpm exec zenstack generate
+pnpm run build
+npx ts-node scripts/preview.ts
 ```
 
-Then browse the generated Markdown files or render them with your preferred viewer.
+Then browse the generated Markdown files in `preview-output/` or render them with your preferred viewer.
+
+## Commit conventions
+
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) and [Release Please](https://github.com/googleapis/release-please) for automated versioning and changelog generation.
+
+### Commit message format
+
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+### Types
+
+| Type | Purpose | Version bump |
+|---|---|---|
+| `feat` | New feature or capability | minor (0.x → 0.x+1) |
+| `fix` | Bug fix | patch (0.x.y → 0.x.y+1) |
+| `perf` | Performance improvement | patch |
+| `docs` | Documentation only | none |
+| `test` | Adding or updating tests | none |
+| `refactor` | Code change that neither fixes a bug nor adds a feature | none |
+| `chore` | Maintenance tasks (deps, CI config) | none |
+| `ci` | CI/CD workflow changes | none |
+
+### Breaking changes
+
+Append `!` after the type to indicate a breaking change:
+
+```
+feat!: rename diagramFormat option to svgMode
+```
+
+Or include a `BREAKING CHANGE:` footer:
+
+```
+feat: overhaul diagram rendering pipeline
+
+BREAKING CHANGE: diagramFormat option renamed to svgMode
+```
+
+Breaking changes bump the major version (or minor while pre-1.0).
+
+### Examples
+
+```
+feat: add diagramEmbed option for inline SVG embedding
+fix: use descriptive alt text in SVG image references
+docs: document responsive wrapper behavior
+refactor: extract wrapResponsive helper from processDiagrams
+test: add inline SVG embedding tests
+chore: update dev dependencies
+```
+
+### How it works
+
+1. You merge PRs to `main` using conventional commit messages
+2. Release Please reads the commit history and opens a "Release PR" with a version bump and auto-generated `CHANGELOG.md`
+3. Merging the Release PR creates a GitHub Release, which triggers the npm publish workflow
 
 ## Frequently touched files
 
