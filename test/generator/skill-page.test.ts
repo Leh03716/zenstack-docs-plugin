@@ -25,7 +25,7 @@ describe('documentation plugin: SKILL.md', () => {
       skill = readDocument(tmpDir, 'SKILL.md');
     });
 
-    it('contains YAML frontmatter, workflow guidance, and omits Constraints when absent', () => {
+    it('contains YAML frontmatter, workflow guidance, and omits policies/validation when absent', () => {
       expect(skill).toMatch(/^---\n/u);
       expect(skill).toContain('name:');
       expect(skill).toContain('description:');
@@ -36,7 +36,8 @@ describe('documentation plugin: SKILL.md', () => {
       expect(skill).toContain('### Writing queries or mutations');
       expect(skill).toContain('### Generating test data');
 
-      expect(skill).not.toContain('## Constraints You Must Respect');
+      expect(skill).not.toContain('## Access Policies');
+      expect(skill).not.toContain('## Validation');
     });
   });
 
@@ -100,6 +101,40 @@ describe('documentation plugin: SKILL.md', () => {
 
       expect(skill).toContain('`authorId`');
     });
+
+    it('includes relationship map with Mermaid ERD', () => {
+      expect(skill).toContain('## Relationship Map');
+      expect(skill).toContain('```mermaid');
+      expect(skill).toContain('erDiagram');
+    });
+
+    it('includes relationships table with cardinality', () => {
+      expect(skill).toContain('## Relationships');
+      expect(skill).toContain('| From | Field | To | Cardinality |');
+      expect(skill).toContain('User');
+      expect(skill).toContain('Post');
+    });
+
+    it('includes field summaries after prisma blocks', () => {
+      const userParts = skill.split('#### User');
+      const userSection = userParts[1]!.split('####')[0]!;
+      expect(userSection).toContain('Required fields:');
+      expect(userSection).toContain('Auto-generated:');
+    });
+
+    it('includes common include patterns in workflow', () => {
+      expect(skill).toContain('**Common include patterns:**');
+      expect(skill).toContain('include:');
+    });
+
+    it('includes creation order in test data section', () => {
+      expect(skill).toContain('**Creation order**');
+    });
+
+    it('includes required fields per model', () => {
+      expect(skill).toContain('### Creating records');
+      expect(skill).toContain('Minimum required fields per model:');
+    });
   });
 
   it('lists ALL entities in overview, not capped', async () => {
@@ -114,8 +149,8 @@ describe('documentation plugin: SKILL.md', () => {
     expect(skill).not.toContain('...and');
   });
 
-  describe('constraints', () => {
-    it('includes access policies and notes auth() dependency', async () => {
+  describe('access policies', () => {
+    it('renders policy matrix table and notes auth() dependency', async () => {
       const tmpDir = await generateFromSchema(
         `
                 model User {
@@ -130,16 +165,19 @@ describe('documentation plugin: SKILL.md', () => {
       );
       const skill = readDocument(tmpDir, 'SKILL.md');
 
-      expect(skill).toContain('## Constraints You Must Respect');
-      expect(skill).toContain('### Access Policies');
-      expect(skill).toContain('**User**');
-      expect(skill).toContain("allow('read', true)");
-      expect(skill).toContain("deny('delete'");
+      expect(skill).toContain('## Access Policies');
+      expect(skill).toContain('| Model | Operation | Rule | Effect |');
+      expect(skill).toContain('| User |');
+      expect(skill).toContain('| read |');
+      expect(skill).toContain('| allow |');
+      expect(skill).toContain('| deny |');
       expect(skill).toContain('auth()');
       expect(skill).toContain('unauthenticated');
     });
+  });
 
-    it('includes validation with instructional context', async () => {
+  describe('validation', () => {
+    it('renders validation section with instructional context', async () => {
       const tmpDir = await generateFromSchema(
         `
                 model User {
@@ -153,7 +191,7 @@ describe('documentation plugin: SKILL.md', () => {
       );
       const skill = readDocument(tmpDir, 'SKILL.md');
 
-      expect(skill).toContain('### Validation');
+      expect(skill).toContain('## Validation');
       expect(skill).toContain('email: @email');
       expect(skill).toContain('name: @length');
       expect(skill).toContain('bio: @contains');
@@ -218,6 +256,13 @@ describe('documentation plugin: SKILL.md', () => {
       expect(skill).toContain('@@index([email])');
     });
 
+    it('includes mixin-inherited fields in model declarations', () => {
+      const userParts = skill.split('#### User');
+      const userSection = userParts[1]!.split('####')[0]!;
+      expect(userSection).toContain('createdAt DateTime @default(now())');
+      expect(userSection).toContain('updatedAt DateTime @updatedAt');
+    });
+
     it('renders enums, types, and views as full prisma declaration blocks', () => {
       expect(skill).toContain('### Enums');
       expect(skill).toContain('#### Role');
@@ -238,15 +283,13 @@ describe('documentation plugin: SKILL.md', () => {
       expect(skill).toContain('view UserReport {');
     });
 
-    it('includes relationships under model declaration', () => {
+    it('includes relationships in consolidated table instead of per-model', () => {
+      expect(skill).toContain('## Relationships');
+      expect(skill).toContain('| From | Field | To | Cardinality |');
+
       const userParts = skill.split('#### User');
       const userSection = userParts[1]!.split('####')[0]!;
-      expect(userSection).toContain('Relationships:');
-      expect(userSection).toContain('posts → Post (has many)');
-
-      const postParts = skill.split('#### Post');
-      const postSection = postParts[1]!.split('####')[0]!;
-      expect(postSection).toContain('author → User (required)');
+      expect(userSection).not.toContain('Relationships:');
     });
 
     it('uses entity name and type in link text', () => {
@@ -303,5 +346,104 @@ describe('documentation plugin: SKILL.md', () => {
       { generateSkill: true, title: 'Acme Platform' },
     );
     expect(readDocument(tmpDir, 'SKILL.md')).toContain('Acme Platform');
+  });
+
+  describe('topological sort for creation order', () => {
+    it('orders models respecting FK dependencies', async () => {
+      const tmpDir = await generateFromSchema(
+        `
+                model Organization {
+                    id    String @id @default(cuid())
+                    users User[]
+                }
+                model User {
+                    id    String @id @default(cuid())
+                    org   Organization @relation(fields: [orgId], references: [id])
+                    orgId String
+                    posts Post[]
+                }
+                model Post {
+                    id       String @id @default(cuid())
+                    author   User   @relation(fields: [authorId], references: [id])
+                    authorId String
+                }
+            `,
+        { generateSkill: true },
+      );
+      const skill = readDocument(tmpDir, 'SKILL.md');
+
+      expect(skill).toContain('**Creation order**');
+      const orderMatch = skill.match(/\*\*Creation order\*\*[^:]*:\s*(.+)/u);
+      expect(orderMatch).not.toBeNull();
+      const order = orderMatch![1]!;
+      const orgIdx = order.indexOf('Organization');
+      const userIdx = order.indexOf('User');
+      const postIdx = order.indexOf('Post');
+      expect(orgIdx).toBeLessThan(userIdx);
+      expect(userIdx).toBeLessThan(postIdx);
+    });
+  });
+
+  describe('SVG diagram pipeline', () => {
+    it('routes SKILL.md through writePageWithDiagrams when diagramFormat is both', async () => {
+      const tmpDir = await generateFromSchema(
+        `
+                model User {
+                    id    String @id @default(cuid())
+                    posts Post[]
+                }
+                model Post {
+                    id       String @id @default(cuid())
+                    author   User   @relation(fields: [authorId], references: [id])
+                    authorId String
+                }
+            `,
+        { diagramFormat: 'both', generateSkill: true },
+      );
+      const skill = readDocument(tmpDir, 'SKILL.md');
+      expect(skill).toContain('![SKILL diagram]');
+      expect(skill).toContain('<details>');
+      expect(skill).toContain('Mermaid source');
+    });
+
+    it('replaces mermaid with SVG reference when diagramFormat is svg', async () => {
+      const tmpDir = await generateFromSchema(
+        `
+                model User {
+                    id    String @id @default(cuid())
+                    posts Post[]
+                }
+                model Post {
+                    id       String @id @default(cuid())
+                    author   User   @relation(fields: [authorId], references: [id])
+                    authorId String
+                }
+            `,
+        { diagramFormat: 'svg', generateSkill: true },
+      );
+      const skill = readDocument(tmpDir, 'SKILL.md');
+      expect(skill).toContain('![SKILL diagram]');
+      expect(skill).not.toContain('```mermaid');
+    });
+
+    it('keeps mermaid blocks when diagramFormat is mermaid (default)', async () => {
+      const tmpDir = await generateFromSchema(
+        `
+                model User {
+                    id    String @id @default(cuid())
+                    posts Post[]
+                }
+                model Post {
+                    id       String @id @default(cuid())
+                    author   User   @relation(fields: [authorId], references: [id])
+                    authorId String
+                }
+            `,
+        { generateSkill: true },
+      );
+      const skill = readDocument(tmpDir, 'SKILL.md');
+      expect(skill).toContain('```mermaid');
+      expect(skill).not.toContain('![SKILL diagram]');
+    });
   });
 });

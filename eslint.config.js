@@ -37,6 +37,12 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ['dist/', 'preview-output/', 'zenstack/'],
+    ignores: [
+      'dist/',
+      'preview-output/',
+      'zenstack/',
+      'release-please-config.json',
+      '.release-please-manifest.json',
+    ],
   },
 );

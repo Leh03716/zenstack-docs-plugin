@@ -14,12 +14,14 @@ const MERMAID_BLOCK_RE = /```mermaid\n(.*?)```/gsu;
 
 /**
  * Extracts inline Mermaid code blocks from markdown, renders each to SVG,
- * and replaces the blocks with image references to companion SVG files.
+ * and replaces the blocks with SVG image references (file or inline) wrapped
+ * in a responsive container.
  */
 export async function processDiagrams(
   markdown: string,
   baseName: string,
   format: 'both' | 'mermaid' | 'svg',
+  embed: 'file' | 'inline',
   theme?: string,
 ): Promise<DiagramResult> {
   if (format === 'mermaid') {
@@ -50,26 +52,57 @@ export async function processDiagrams(
       continue;
     }
 
-    svgFiles.push({ content: svg, filename: svgFilename });
+    const altText = `${baseName} diagram`;
 
-    const imgRef = `![diagram](./${svgFilename})`;
+    if (embed === 'inline') {
+      const inlineSvg = wrapResponsive(svg);
 
-    if (format === 'svg') {
-      result = result.replace(fullMatch, imgRef);
+      if (format === 'svg') {
+        result = result.replace(fullMatch, inlineSvg);
+      } else {
+        const replacement = [
+          inlineSvg,
+          '',
+          '<details>',
+          '<summary>Mermaid source</summary>',
+          '',
+          fullMatch,
+          '',
+          '</details>',
+        ].join('\n');
+        result = result.replace(fullMatch, replacement);
+      }
     } else {
-      const replacement = [
-        imgRef,
-        '',
-        '<details>',
-        '<summary>Mermaid source</summary>',
-        '',
-        fullMatch,
-        '',
-        '</details>',
-      ].join('\n');
-      result = result.replace(fullMatch, replacement);
+      svgFiles.push({ content: svg, filename: svgFilename });
+      const imgRef = wrapResponsive(`![${altText}](./${svgFilename})`);
+
+      if (format === 'svg') {
+        result = result.replace(fullMatch, imgRef);
+      } else {
+        const replacement = [
+          imgRef,
+          '',
+          '<details>',
+          '<summary>Mermaid source</summary>',
+          '',
+          fullMatch,
+          '',
+          '</details>',
+        ].join('\n');
+        result = result.replace(fullMatch, replacement);
+      }
     }
   }
 
   return { markdown: result, svgFiles };
+}
+
+function wrapResponsive(inner: string): string {
+  return [
+    '<div style="max-width:100%;overflow-x:auto">',
+    '',
+    inner,
+    '',
+    '</div>',
+  ].join('\n');
 }

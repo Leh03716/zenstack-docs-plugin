@@ -142,6 +142,7 @@ plugin documentation {
     generateErd            = true
     erdTheme               = 'github-light'
     diagramFormat          = 'svg'
+    diagramEmbed           = 'inline'
 }
 ```
 
@@ -160,6 +161,7 @@ plugin documentation {
 | `erdFormat` | `"svg"`, `"mmd"`, or `"both"` | `"both"` | Which ERD output format(s) to produce |
 | `erdTheme` | `string` | default | [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid) theme name for SVG rendering |
 | `diagramFormat` | `"mermaid"`, `"svg"`, or `"both"` | `"mermaid"` | How per-page Mermaid diagrams are rendered (see [Per-Page SVG Diagrams](#per-page-svg-diagrams)) |
+| `diagramEmbed` | `"file"` or `"inline"` | `"file"` | Whether SVGs are written as companion files or embedded directly in the markdown (see [Per-Page SVG Diagrams](#per-page-svg-diagrams)) |
 
 ## ERD SVG Export
 
@@ -188,7 +190,7 @@ See all 15 themes rendered against the showcase schema in the [theme gallery](./
 
 ## Per-Page SVG Diagrams
 
-By default, diagrams on model, view, enum, type, procedure, and relationship pages are rendered as inline Mermaid code blocks. Set `diagramFormat` to render them as SVG images instead:
+By default, diagrams on model, view, enum, type, procedure, relationship, and SKILL pages are rendered as inline Mermaid code blocks. Set `diagramFormat` to render them as SVG images instead:
 
 ```prisma
 plugin documentation {
@@ -199,13 +201,40 @@ plugin documentation {
 }
 ```
 
+### Diagram format
+
 | Value | Behavior |
 |---|---|
 | `"mermaid"` | Inline ` ```mermaid ` code blocks (default, requires a Mermaid-capable viewer) |
-| `"svg"` | SVG content embedded directly in the markdown — works everywhere, including Notion, plain Markdown viewers, and GitHub |
-| `"both"` | Embedded SVG with the Mermaid source in a collapsible `<details>` block |
+| `"svg"` | Companion `.svg` files referenced via `![Entity diagram](./Entity-diagram.svg)` — works everywhere |
+| `"both"` | SVG image reference with the Mermaid source in a collapsible `<details>` block |
 
-When set to `"svg"` or `"both"`, the rendered SVG is embedded inline in each `.md` page — no separate files needed. The `erdTheme` option applies to all per-page SVGs as well as the standalone ERD.
+### Embed mode
+
+Control whether SVGs are written as separate files or embedded directly in the markdown:
+
+```prisma
+plugin documentation {
+    provider      = 'zenstack-docs-plugin'
+    output        = './docs/schema'
+    diagramFormat = 'svg'
+    diagramEmbed  = 'inline'
+}
+```
+
+| Value | Behavior |
+|---|---|
+| `"file"` | SVG written as companion files next to each `.md` page (default) |
+| `"inline"` | Raw `<svg>` XML embedded directly in the markdown — fully self-contained, no separate files |
+
+The `diagramEmbed` option only takes effect when `diagramFormat` is `"svg"` or `"both"`.
+
+### Additional features
+
+- **Descriptive alt text** — image references use the entity name (e.g. `![User diagram]`) for accessibility and hover tooltips
+- **Responsive wrapper** — all SVG outputs (file references and inline) are wrapped in `<div style="max-width:100%;overflow-x:auto">` so large diagrams scroll horizontally instead of overflowing the page
+
+The `erdTheme` option applies to all per-page SVGs as well as the standalone ERD.
 
 ## Enriching Your Documentation
 
